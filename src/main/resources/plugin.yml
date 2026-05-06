@@ -1,0 +1,18 @@
+name: HereFishy
+version: '1.0.1'
+main: com.herefishy.herefishy.HereFishyPlugin
+description: Auto-fishing plugin for Paper servers
+api-version: '1.21'
+author: HereFishy
+softdepend: [AuraSkills]
+
+commands:
+  herefishy:
+    description: Toggle auto-fishing
+    usage: /herefishy <start|stop>
+    permission: herefishy.use
+
+permissions:
+  herefishy.use:
+    description: Allows use of the herefishy command
+    default: true

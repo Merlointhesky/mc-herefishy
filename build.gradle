@@ -1,0 +1,26 @@
+plugins {
+    id 'java'
+}
+
+group = 'com.herefishy'
+version = '1.0.1'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+}
+
+dependencies {
+    compileOnly 'io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT'
+    compileOnly 'dev.aurelium:auraskills-api-bukkit:2.2.4'
+}
+
+jar {
+    archiveBaseName = 'HereFishy'
+    archiveVersion = version
+}
