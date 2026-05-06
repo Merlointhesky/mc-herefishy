@@ -61,7 +61,10 @@ public class FishingListener implements Listener {
                 giveFishingLoot(player);
 
                 // Award fishing XP first (vanilla: 1-6 XP per catch)
-                int xpAwarded = 1 + RANDOM.nextInt(6);
+                // Boosted by AuraSkills fishing level (+2% per level)
+                int auraFishingLevel = getAuraSkillsFishingLevel(player);
+                int baseXp = 1 + RANDOM.nextInt(6);
+                int xpAwarded = (int) Math.round(baseXp * (1.0 + auraFishingLevel * 0.02));
                 player.giveExp(xpAwarded);
 
                 // Damage the fishing rod on catch (pass XP for Mending simulation)
@@ -197,8 +200,10 @@ public class FishingListener implements Listener {
             AuraSkillsApi auraSkills = AuraSkillsApi.get();
             SkillsUser user = auraSkills.getUser(player.getUniqueId());
             if (user != null) {
-                // Dynamic XP based on loot rarity
-                double xpAmount = calculateFishingXp(loot);
+                // Dynamic XP based on loot rarity, boosted by fishing level (+1% per level)
+                double baseXp = calculateFishingXp(loot);
+                int auraFishingLevel = getAuraSkillsFishingLevel(player);
+                double xpAmount = baseXp * (1.0 + auraFishingLevel * 0.01);
                 user.addSkillXp(Skills.FISHING, xpAmount);
             }
         } catch (Exception e) {
@@ -215,6 +220,22 @@ public class FishingListener implements Listener {
         };
     }
 
+    private int getAuraSkillsFishingLevel(Player player) {
+        if (Bukkit.getPluginManager().getPlugin("AuraSkills") == null) {
+            return 0;
+        }
+        try {
+            AuraSkillsApi auraSkills = AuraSkillsApi.get();
+            SkillsUser user = auraSkills.getUser(player.getUniqueId());
+            if (user != null) {
+                return user.getSkillLevel(Skills.FISHING);
+            }
+        } catch (Exception e) {
+            // AuraSkills integration failed
+        }
+        return 0;
+    }
+
     private ItemStack generateFishingLoot(Player player) {
         double roll = RANDOM.nextDouble();
 
@@ -223,9 +244,16 @@ public class FishingListener implements Listener {
 
         // Vanilla weights: Fish ~85%, Treasure ~5%, Junk ~10%
         // With Luck of the Sea: Treasure increases, Junk decreases
-        double treasureChance = 0.05 + (luckLevel * 0.01);
-        double junkChance = 0.10 - (luckLevel * 0.005);
+        // AuraSkills fishing level further boosts treasure and reduces junk
+        int auraFishingLevel = getAuraSkillsFishingLevel(player);
+        double treasureChance = 0.05 + (luckLevel * 0.01) + (auraFishingLevel * 0.0025);
+        double junkChance = 0.10 - (luckLevel * 0.005) - (auraFishingLevel * 0.0025);
+        treasureChance = Math.min(treasureChance, 0.35);
+        junkChance = Math.max(junkChance, 0.0);
         double fishChance = 1.0 - treasureChance - junkChance;
+        if (fishChance < 0) {
+            fishChance = 0;
+        }
 
         if (roll < treasureChance) {
             return generateTreasureLoot();
@@ -305,6 +333,8 @@ public class FishingListener implements Listener {
     }
 
     private void scheduleReCast(Player player) {
+        int auraFishingLevel = getAuraSkillsFishingLevel(player);
+        long delay = Math.max(5L, 15L - (auraFishingLevel / 10L));
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -335,7 +365,7 @@ public class FishingListener implements Listener {
                     newHook.setVelocity(direction.multiply(0.8));
                 }
             }
-        }.runTaskLater(HereFishyPlugin.getInstance(), 15L);
+        }.runTaskLater(HereFishyPlugin.getInstance(), delay);
     }
 
     private boolean isHoldingFishingRod(Player player) {

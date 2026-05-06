@@ -11,7 +11,11 @@ A [Paper](https://papermc.io) Minecraft plugin for **auto-fishing** — automati
 - **Inventory full detection** — Automatically stops when your inventory is full.
 - **Rod break handling** — Detects when your fishing rod breaks and stops auto-fishing with a notification.
 - **Offline cleanup** — Automatically removes players from auto-fishing when they disconnect.
-- **AuraSkills integration** — Awards AuraSkills fishing skill XP (optional, works without it).
+- **AuraSkills integration** — When AuraSkills is installed, the plugin inspects the player's Fishing skill level for extra buffs:
+  - **Better loot** — Increased treasure chance and reduced junk chance (+0.25% per level).
+  - **Faster fishing** — Reduced re-cast delay (1 tick faster per 10 levels).
+  - **Bonus vanilla XP** — Minecraft XP gains are boosted by +2% per Fishing level.
+  - **Bonus AuraSkills XP** — AuraSkills Fishing XP gains are boosted by +1% per Fishing level.
 - **Luck of the Sea support** — Respects Luck of the Sea enchantment for better treasure chances.
 
 ## Requirements
@@ -33,7 +37,7 @@ A [Paper](https://papermc.io) Minecraft plugin for **auto-fishing** — automati
 ./gradlew build
 ```
 
-The compiled JAR will be in `build/libs/HereFishy-1.0.1.jar`.
+The compiled JAR will be in `build/libs/HereFishy-1.0.2.jar`.
 
 ## Commands
 
