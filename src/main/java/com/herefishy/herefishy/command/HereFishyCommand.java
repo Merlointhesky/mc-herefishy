@@ -1,6 +1,8 @@
 package com.herefishy.herefishy.command;
 
+import com.herefishy.herefishy.gui.RoutingConfigMenu;
 import com.herefishy.herefishy.listener.FishingListener;
+import com.herefishy.herefishy.session.FishySessionManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.Command;
@@ -9,12 +11,14 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-public class HereFishyCommand implements CommandExecutor {
+public final class HereFishyCommand implements CommandExecutor {
 
     private final FishingListener fishingListener;
+    private final FishySessionManager sessionManager;
 
-    public HereFishyCommand(FishingListener fishingListener) {
+    public HereFishyCommand(FishingListener fishingListener, FishySessionManager sessionManager) {
         this.fishingListener = fishingListener;
+        this.sessionManager = sessionManager;
     }
 
     @Override
@@ -27,14 +31,11 @@ public class HereFishyCommand implements CommandExecutor {
         }
 
         if (args.length < 1) {
-            player.sendMessage(Component.text("Usage: /herefishy <start|stop>")
-                    .color(NamedTextColor.YELLOW));
+            usage(player);
             return true;
         }
 
-        String subCommand = args[0].toLowerCase();
-
-        switch (subCommand) {
+        switch (args[0].toLowerCase()) {
             case "start" -> {
                 if (fishingListener.isAutoFishing(player)) {
                     player.sendMessage(Component.text("Auto-fishing is already enabled!")
@@ -55,10 +56,15 @@ public class HereFishyCommand implements CommandExecutor {
                             .color(NamedTextColor.GREEN));
                 }
             }
-            default -> player.sendMessage(Component.text("Usage: /herefishy <start|stop>")
-                    .color(NamedTextColor.YELLOW));
+            case "config" -> RoutingConfigMenu.open(player, sessionManager);
+            default -> usage(player);
         }
 
         return true;
+    }
+
+    private static void usage(Player player) {
+        player.sendMessage(Component.text("Usage: /herefishy <start|stop|config>")
+                .color(NamedTextColor.YELLOW));
     }
 }

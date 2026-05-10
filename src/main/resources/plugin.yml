@@ -1,5 +1,5 @@
 name: HereFishy
-version: '1.0.2'
+version: '1.1.0'
 main: com.herefishy.herefishy.HereFishyPlugin
 description: Auto-fishing plugin for Paper servers
 api-version: '1.21'
@@ -8,11 +8,11 @@ softdepend: [AuraSkills]
 
 commands:
   herefishy:
-    description: Toggle auto-fishing
-    usage: /herefishy <start|stop>
+    description: Configure and toggle auto-fishing
+    usage: /herefishy <start|stop|config>
     permission: herefishy.use
 
 permissions:
   herefishy.use:
-    description: Allows use of the herefishy command
+    description: Allows use of the herefishy command and listeners
     default: true

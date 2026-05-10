@@ -1,12 +1,18 @@
 package com.herefishy.herefishy.listener;
 
 import com.herefishy.herefishy.HereFishyPlugin;
+import com.herefishy.herefishy.loot.FishingLootTable;
+import com.herefishy.herefishy.loot.LootClassifier;
+import com.herefishy.herefishy.offload.InventoryOffloadService;
+import com.herefishy.herefishy.session.FishySession;
+import com.herefishy.herefishy.session.FishySessionManager;
 import dev.aurelium.auraskills.api.AuraSkillsApi;
 import dev.aurelium.auraskills.api.skill.Skills;
 import dev.aurelium.auraskills.api.user.SkillsUser;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.enchantments.Enchantment;
@@ -15,37 +21,49 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerFishEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Random;
-import java.util.Set;
-import java.util.UUID;
 
-public class FishingListener implements Listener {
+public final class FishingListener implements Listener {
 
     private static final int LOW_DURABILITY_THRESHOLD = 5;
 
-    private final Set<UUID> autoFishingPlayers = new HashSet<>();
+    private final FishySessionManager sessionManager;
+    private final InventoryOffloadService offloadService;
+
+    private static final Random RANDOM = new Random();
+
+    public FishingListener(FishySessionManager sessionManager, InventoryOffloadService offloadService) {
+        this.sessionManager = sessionManager;
+        this.offloadService = offloadService;
+    }
 
     public boolean isAutoFishing(Player player) {
-        return autoFishingPlayers.contains(player.getUniqueId());
+        return sessionManager.session(player).isAutoFishing();
     }
 
     public void startAutoFishing(Player player) {
-        autoFishingPlayers.add(player.getUniqueId());
+        sessionManager.session(player).setAutoFishing(true);
     }
 
     public void stopAutoFishing(Player player) {
-        autoFishingPlayers.remove(player.getUniqueId());
+        sessionManager.session(player).setAutoFishing(false);
+    }
+
+    public void stopAutoFishing(Player player, @Nullable Component message) {
+        stopAutoFishing(player);
+        if (message != null) {
+            player.sendMessage(message);
+        }
     }
 
     @EventHandler
@@ -57,113 +75,142 @@ public class FishingListener implements Listener {
 
         switch (event.getState()) {
             case BITE -> {
-                // Generate loot from vanilla fishing loot table
-                giveFishingLoot(player);
-
-                // Award fishing XP first (vanilla: 1-6 XP per catch)
-                // Boosted by AuraSkills fishing level (+2% per level)
+                boolean suppressRecast = deliverCatch(player);
                 int auraFishingLevel = getAuraSkillsFishingLevel(player);
                 int baseXp = 1 + RANDOM.nextInt(6);
                 int xpAwarded = (int) Math.round(baseXp * (1.0 + auraFishingLevel * 0.02));
                 player.giveExp(xpAwarded);
 
-                // Damage the fishing rod on catch (pass XP for Mending simulation)
                 ItemStack rod = getHeldFishingRod(player);
                 if (rod != null) {
                     if (!damageFishingRod(player, rod, xpAwarded)) {
-                        stopAutoFishing(player);
-                        player.sendMessage(Component.text("Auto-fishing stopped — your fishing rod broke!")
-                                .color(NamedTextColor.RED));
+                        stopAutoFishing(player,
+                                Component.text("Auto-fishing stopped — your fishing rod broke!")
+                                        .color(NamedTextColor.RED));
                         event.getHook().remove();
                         return;
                     }
                 }
 
-                // Remove the hook entity
                 FishHook hook = event.getHook();
                 if (hook != null && !hook.isDead()) {
                     hook.remove();
                 }
 
-                // Schedule re-cast
-                scheduleReCast(player);
+                if (!suppressRecast) {
+                    scheduleReCast(player);
+                }
             }
 
             case CAUGHT_FISH -> {
-                // Safety fallback: should not fire for auto-fishing players
-                // since we remove the hook on BITE, but handle it just in case
                 ItemStack rod = getHeldFishingRod(player);
                 if (rod != null) {
                     if (!damageFishingRod(player, rod, 0)) {
-                        stopAutoFishing(player);
-                        player.sendMessage(Component.text("Auto-fishing stopped — your fishing rod broke!")
-                                .color(NamedTextColor.RED));
+                        stopAutoFishing(player,
+                                Component.text("Auto-fishing stopped — your fishing rod broke!")
+                                        .color(NamedTextColor.RED));
                         return;
                     }
                 }
                 scheduleReCast(player);
             }
 
-            case FAILED_ATTEMPT, IN_GROUND -> {
-                scheduleReCast(player);
-            }
+            case FAILED_ATTEMPT, IN_GROUND -> scheduleReCast(player);
 
             default -> {
             }
         }
     }
 
-    @EventHandler
-    public void onPlayerQuit(PlayerQuitEvent event) {
-        autoFishingPlayers.remove(event.getPlayer().getUniqueId());
-    }
-
-    private static final Random RANDOM = new Random();
-
-    // Vanilla fishing loot categories (approximate vanilla weights)
-    private static final List<Material> FISH_LOOT = List.of(
-            Material.COD, Material.COD, Material.COD, Material.COD,  // 60% cod
-            Material.SALMON, Material.SALMON,                          // 25% salmon
-            Material.TROPICAL_FISH,                                    // 10% tropical fish
-            Material.PUFFERFISH                                       // 5% pufferfish
-    );
-
-    private static final List<Material> JUNK_LOOT = List.of(
-            Material.BOWL, Material.LEATHER, Material.LEATHER_BOOTS,
-            Material.ROTTEN_FLESH, Material.STICK, Material.STRING,
-            Material.POTION, Material.BONE, Material.TRIPWIRE_HOOK,
-            Material.INK_SAC
-    );
-
-    private static final List<Material> TREASURE_LOOT = List.of(
-            Material.ENCHANTED_BOOK,  // Enchanted book
-            Material.BOW,             // Enchanted bow
-            Material.FISHING_ROD,     // Enchanted fishing rod
-            Material.LILY_PAD,
-            Material.NAME_TAG,
-            Material.SADDLE,
-            Material.NAUTILUS_SHELL
-    );
-
-    private void giveFishingLoot(Player player) {
+    /**
+     * @return true when downstream logic should skip scheduling another immediate cast because offload handled it or autofishing stopped.
+     */
+    private boolean deliverCatch(Player player) {
+        FishySession session = sessionManager.session(player);
         ItemStack loot = generateFishingLoot(player);
-        if (loot == null || loot.getType() == Material.AIR) return;
-
-        HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(loot);
-        for (ItemStack drop : leftover.values()) {
-            player.getWorld().dropItem(player.getLocation(), drop);
+        if (loot == null || loot.getType() == Material.AIR) {
+            return false;
         }
 
-        // Send colored catch message
-        sendCatchMessage(player, loot);
-
-        // Award AuraSkills fishing XP if available
+        Location fishingAnchor = player.getLocation().clone();
+        HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(loot);
+        sendCatchMessage(player, loot, session);
         awardAuraSkillsFishingXp(player, loot);
+
+        if (leftover.isEmpty()) {
+            return false;
+        }
+
+        Collection<ItemStack> spill = leftover.values();
+
+        if (session.routesComplete()) {
+            session.enqueueOverflowStacks(spill);
+            offloadService.run(player, fishingAnchor, this, true);
+            return true;
+        }
+
+        for (ItemStack overflow : spill) {
+            player.getWorld().dropItemNaturally(player.getLocation(), overflow.clone());
+        }
+        return false;
     }
 
-    private void sendCatchMessage(Player player, ItemStack loot) {
+    public void scheduleReCast(Player player) {
+        int auraFishingLevel = getAuraSkillsFishingLevel(player);
+        long delay = Math.max(5L, 15L - (auraFishingLevel / 10L));
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!player.isOnline()) {
+                    return;
+                }
+                FishySession session = sessionManager.session(player);
+                if (!session.isAutoFishing()) {
+                    return;
+                }
+                if (session.isOffloadInProgress()) {
+                    scheduleReCast(player);
+                    return;
+                }
+                if (!isHoldingFishingRod(player)) {
+                    stopAutoFishing(player);
+                    return;
+                }
+
+                if (isRodDurabilityLow(player)) {
+                    stopAutoFishing(player, Component.text("Auto-fishing stopped — fishing rod is nearly broken!")
+                            .color(NamedTextColor.RED));
+                    return;
+                }
+
+                Location fishingAnchor = player.getLocation().clone();
+                if (isInventoryFull(player)) {
+                    FishySession active = sessionManager.session(player);
+                    if (active.routesComplete()) {
+                        offloadService.run(player, fishingAnchor, FishingListener.this, true);
+                    } else {
+                        stopAutoFishing(player, Component.text("Auto-fishing stopped — inventory full!")
+                                .color(NamedTextColor.RED));
+                    }
+                    return;
+                }
+
+                Vector direction = player.getLocation().getDirection();
+                FishHook newHook = player.launchProjectile(FishHook.class, direction.multiply(0.8));
+                if (newHook != null) {
+                    newHook.setVelocity(direction.multiply(0.8));
+                }
+            }
+        }.runTaskLater(HereFishyPlugin.getInstance(), delay);
+    }
+
+    private boolean isInventoryFull(Player player) {
+        return player.getInventory().firstEmpty() == -1 || sessionManager.session(player).hasBufferedOverflow();
+    }
+
+    private void sendCatchMessage(Player player, ItemStack loot, FishySession session) {
         String itemName = formatItemName(loot.getType().name());
-        NamedTextColor color = getLootColor(loot.getType());
+        NamedTextColor color = LootClassifier.chatColor(loot.getType(), session);
 
         Component message = Component.text("Here fishy! Got ")
                 .color(NamedTextColor.GRAY)
@@ -177,47 +224,31 @@ public class FishingListener implements Listener {
         String[] words = materialName.toLowerCase().split("_");
         StringBuilder result = new StringBuilder();
         for (String word : words) {
-            if (!result.isEmpty()) result.append(" ");
+            if (!result.isEmpty()) {
+                result.append(" ");
+            }
             result.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
         }
         return result.toString();
     }
 
-    private NamedTextColor getLootColor(Material material) {
-        return switch (material) {
-            case ENCHANTED_BOOK, BOW, FISHING_ROD, SADDLE, NAME_TAG, NAUTILUS_SHELL -> NamedTextColor.GREEN; // Treasure
-            case LILY_PAD -> NamedTextColor.YELLOW; // Semi-rare
-            case LEATHER_BOOTS, BOWL, STICK, STRING, BONE, ROTTEN_FLESH, TRIPWIRE_HOOK, INK_SAC, POTION, LEATHER -> NamedTextColor.RED; // Junk
-            default -> NamedTextColor.YELLOW; // Fish
-        };
-    }
-
     private void awardAuraSkillsFishingXp(Player player, ItemStack loot) {
         if (Bukkit.getPluginManager().getPlugin("AuraSkills") == null) {
-            return; // AuraSkills not installed
+            return;
         }
         try {
             AuraSkillsApi auraSkills = AuraSkillsApi.get();
             SkillsUser user = auraSkills.getUser(player.getUniqueId());
             if (user != null) {
-                // Dynamic XP based on loot rarity, boosted by fishing level (+1% per level)
-                double baseXp = calculateFishingXp(loot);
+                FishySession session = sessionManager.session(player);
+                double baseXp = LootClassifier.auraXpBase(loot.getType(), session);
                 int auraFishingLevel = getAuraSkillsFishingLevel(player);
                 double xpAmount = baseXp * (1.0 + auraFishingLevel * 0.01);
                 user.addSkillXp(Skills.FISHING, xpAmount);
             }
-        } catch (Exception e) {
+        } catch (Exception ignored) {
             // AuraSkills integration failed, but auto-fishing continues
         }
-    }
-
-    private double calculateFishingXp(ItemStack loot) {
-        return switch (loot.getType()) {
-            case ENCHANTED_BOOK, BOW, FISHING_ROD, SADDLE, NAME_TAG, NAUTILUS_SHELL -> 50.0; // Treasure
-            case LILY_PAD -> 35.0; // Semi-rare
-            case LEATHER_BOOTS, BOWL, STICK, STRING, BONE, ROTTEN_FLESH, TRIPWIRE_HOOK, INK_SAC, POTION, LEATHER -> 15.0; // Junk
-            default -> 25.0; // Fish (cod, salmon, tropical fish, pufferfish)
-        };
     }
 
     private int getAuraSkillsFishingLevel(Player player) {
@@ -230,7 +261,7 @@ public class FishingListener implements Listener {
             if (user != null) {
                 return user.getSkillLevel(Skills.FISHING);
             }
-        } catch (Exception e) {
+        } catch (Exception ignored) {
             // AuraSkills integration failed
         }
         return 0;
@@ -238,13 +269,8 @@ public class FishingListener implements Listener {
 
     private ItemStack generateFishingLoot(Player player) {
         double roll = RANDOM.nextDouble();
-
-        // Check for Luck of the Sea enchantment
         int luckLevel = getLuckLevel(player);
 
-        // Vanilla weights: Fish ~85%, Treasure ~5%, Junk ~10%
-        // With Luck of the Sea: Treasure increases, Junk decreases
-        // AuraSkills fishing level further boosts treasure and reduces junk
         int auraFishingLevel = getAuraSkillsFishingLevel(player);
         double treasureChance = 0.05 + (luckLevel * 0.01) + (auraFishingLevel * 0.0025);
         double junkChance = 0.10 - (luckLevel * 0.005) - (auraFishingLevel * 0.0025);
@@ -266,20 +292,21 @@ public class FishingListener implements Listener {
 
     private int getLuckLevel(Player player) {
         ItemStack rod = getHeldFishingRod(player);
-        if (rod == null || !rod.hasItemMeta()) return 0;
+        if (rod == null || !rod.hasItemMeta()) {
+            return 0;
+        }
         return rod.getItemMeta().getEnchantLevel(Enchantment.LUCK_OF_THE_SEA);
     }
 
     private ItemStack generateFishLoot() {
-        Material fish = FISH_LOOT.get(RANDOM.nextInt(FISH_LOOT.size()));
+        Material fish = FishingLootTable.FISH_LOOT.get(RANDOM.nextInt(FishingLootTable.FISH_LOOT.size()));
         return new ItemStack(fish, 1);
     }
 
     private ItemStack generateJunkLoot() {
-        Material junk = JUNK_LOOT.get(RANDOM.nextInt(JUNK_LOOT.size()));
+        Material junk = FishingLootTable.JUNK_LOOT.get(RANDOM.nextInt(FishingLootTable.JUNK_LOOT.size()));
         ItemStack item = new ItemStack(junk, 1);
 
-        // Damaged leather boots
         if (junk == Material.LEATHER_BOOTS && item.getItemMeta() instanceof Damageable damageable) {
             damageable.setDamage((int) (Material.LEATHER_BOOTS.getMaxDurability() * RANDOM.nextDouble()));
             item.setItemMeta(damageable);
@@ -289,7 +316,7 @@ public class FishingListener implements Listener {
     }
 
     private ItemStack generateTreasureLoot() {
-        Material treasure = TREASURE_LOOT.get(RANDOM.nextInt(TREASURE_LOOT.size()));
+        Material treasure = FishingLootTable.TREASURE_LOOT.get(RANDOM.nextInt(FishingLootTable.TREASURE_LOOT.size()));
         ItemStack item = new ItemStack(treasure, 1);
 
         return switch (treasure) {
@@ -308,7 +335,6 @@ public class FishingListener implements Listener {
             case BOW, FISHING_ROD -> {
                 ItemMeta meta = item.getItemMeta();
                 if (meta != null) {
-                    // Add random fishing-related enchantments
                     if (RANDOM.nextBoolean()) {
                         meta.addEnchant(Enchantment.UNBREAKING, 1 + RANDOM.nextInt(3), true);
                     }
@@ -332,42 +358,6 @@ public class FishingListener implements Listener {
         };
     }
 
-    private void scheduleReCast(Player player) {
-        int auraFishingLevel = getAuraSkillsFishingLevel(player);
-        long delay = Math.max(5L, 15L - (auraFishingLevel / 10L));
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (!player.isOnline()) return;
-                if (!isAutoFishing(player)) return;
-                if (!isHoldingFishingRod(player)) {
-                    stopAutoFishing(player);
-                    return;
-                }
-
-                if (isInventoryFull(player)) {
-                    stopAutoFishing(player);
-                    player.sendMessage(Component.text("Auto-fishing stopped — inventory full!")
-                            .color(NamedTextColor.RED));
-                    return;
-                }
-
-                if (isRodDurabilityLow(player)) {
-                    stopAutoFishing(player);
-                    player.sendMessage(Component.text("Auto-fishing stopped — fishing rod is nearly broken!")
-                            .color(NamedTextColor.RED));
-                    return;
-                }
-
-                Vector direction = player.getLocation().getDirection();
-                FishHook newHook = player.launchProjectile(FishHook.class, direction.multiply(0.8));
-                if (newHook != null) {
-                    newHook.setVelocity(direction.multiply(0.8));
-                }
-            }
-        }.runTaskLater(HereFishyPlugin.getInstance(), delay);
-    }
-
     private boolean isHoldingFishingRod(Player player) {
         ItemStack mainHand = player.getInventory().getItemInMainHand();
         ItemStack offHand = player.getInventory().getItemInOffHand();
@@ -376,36 +366,38 @@ public class FishingListener implements Listener {
 
     private ItemStack getHeldFishingRod(Player player) {
         ItemStack mainHand = player.getInventory().getItemInMainHand();
-        if (mainHand.getType() == Material.FISHING_ROD) return mainHand;
+        if (mainHand.getType() == Material.FISHING_ROD) {
+            return mainHand;
+        }
         ItemStack offHand = player.getInventory().getItemInOffHand();
-        if (offHand.getType() == Material.FISHING_ROD) return offHand;
+        if (offHand.getType() == Material.FISHING_ROD) {
+            return offHand;
+        }
         return null;
     }
 
     private boolean damageFishingRod(Player player, ItemStack rod, int xpAwarded) {
         ItemMeta meta = rod.getItemMeta();
-        if (!(meta instanceof Damageable damageable)) return true;
+        if (!(meta instanceof Damageable damageable)) {
+            return true;
+        }
 
-        // Check for Mending enchantment (uses XP to repair)
         Enchantment mending = Enchantment.getByKey(NamespacedKey.minecraft("mending"));
         if (mending != null && meta.hasEnchant(mending) && xpAwarded > 0 && damageable.getDamage() > 0) {
-            // Mending: 2 XP = 1 durability repaired
             int durabilityRepaired = xpAwarded / 2;
             int newDamage = Math.max(0, damageable.getDamage() - durabilityRepaired);
             damageable.setDamage(newDamage);
             rod.setItemMeta(meta);
             updateRodInInventory(player, rod);
-            return true; // Mending absorbed the "damage" by repairing
+            return true;
         }
 
-        // Check for Unbreaking enchantment (reduces damage chance)
         Enchantment unbreaking = Enchantment.getByKey(NamespacedKey.minecraft("unbreaking"));
         int unbreakingLevel = (unbreaking != null && meta.hasEnchant(unbreaking)) ? meta.getEnchantLevel(unbreaking) : 0;
         if (unbreakingLevel > 0) {
-            // Unbreaking: Level 1 = 50% chance to ignore damage, Level 2 = 66%, Level 3 = 75%
             double chanceToIgnoreDamage = unbreakingLevel / (unbreakingLevel + 1.0);
             if (RANDOM.nextDouble() < chanceToIgnoreDamage) {
-                return true; // No damage taken this time
+                return true;
             }
         }
 
@@ -437,16 +429,14 @@ public class FishingListener implements Listener {
 
     private boolean isRodDurabilityLow(Player player) {
         ItemStack rod = getHeldFishingRod(player);
-        if (rod == null) return true;
+        if (rod == null) {
+            return true;
+        }
         ItemMeta meta = rod.getItemMeta();
         if (meta instanceof Damageable damageable) {
             int remaining = rod.getType().getMaxDurability() - damageable.getDamage();
             return remaining <= LOW_DURABILITY_THRESHOLD;
         }
         return false;
-    }
-
-    private boolean isInventoryFull(Player player) {
-        return player.getInventory().firstEmpty() == -1;
     }
 }
