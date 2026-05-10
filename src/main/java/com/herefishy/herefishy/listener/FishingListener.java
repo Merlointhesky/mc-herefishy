@@ -243,7 +243,7 @@ public final class FishingListener implements Listener {
                 FishySession session = sessionManager.session(player);
                 double baseXp = LootClassifier.auraXpBase(loot.getType(), session);
                 int auraFishingLevel = getAuraSkillsFishingLevel(player);
-                double xpAmount = baseXp * (1.0 + auraFishingLevel * 0.01);
+                double xpAmount = baseXp * (1.0 + auraFishingLevel * 0.02);
                 user.addSkillXp(Skills.FISHING, xpAmount);
             }
         } catch (Exception ignored) {
@@ -282,7 +282,7 @@ public final class FishingListener implements Listener {
         }
 
         if (roll < treasureChance) {
-            return generateTreasureLoot();
+            return generateTreasureLoot(player);
         } else if (roll < treasureChance + junkChance) {
             return generateJunkLoot();
         } else {
@@ -315,8 +315,32 @@ public final class FishingListener implements Listener {
         return item;
     }
 
-    private ItemStack generateTreasureLoot() {
-        Material treasure = FishingLootTable.TREASURE_LOOT.get(RANDOM.nextInt(FishingLootTable.TREASURE_LOOT.size()));
+    private ItemStack generateTreasureLoot(Player player) {
+        // Rarity tiers affected by AuraSkills fishing level bonus
+        int auraFishingLevel = getAuraSkillsFishingLevel(player);
+        double rarityRoll = RANDOM.nextDouble();
+        Material treasure;
+
+        // Base rarity chances: Standard (85%), Rare (14%), Epic (1%)
+        // Increased by 0.5% per fishing level for rare and epic
+        double rareChanceBonus = auraFishingLevel * 0.005;
+        double epicChanceBonus = auraFishingLevel * 0.005;
+        
+        double standardChance = 0.85 - rareChanceBonus - epicChanceBonus;
+        double rareChance = 0.14 + rareChanceBonus;
+        double epicChance = 0.01 + epicChanceBonus;
+
+        if (rarityRoll < standardChance) {
+            // Standard treasure (1000 XP)
+            treasure = FishingLootTable.STANDARD_TREASURE_LOOT.get(RANDOM.nextInt(FishingLootTable.STANDARD_TREASURE_LOOT.size()));
+        } else if (rarityRoll < standardChance + rareChance) {
+            // Rare treasure (2000 XP)
+            treasure = FishingLootTable.RARE_TREASURE_LOOT.get(RANDOM.nextInt(FishingLootTable.RARE_TREASURE_LOOT.size()));
+        } else {
+            // Epic treasure (5000 XP)
+            treasure = FishingLootTable.EPIC_TREASURE_LOOT.get(RANDOM.nextInt(FishingLootTable.EPIC_TREASURE_LOOT.size()));
+        }
+
         ItemStack item = new ItemStack(treasure, 1);
 
         return switch (treasure) {

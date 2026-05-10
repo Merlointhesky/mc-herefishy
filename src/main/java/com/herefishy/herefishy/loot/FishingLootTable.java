@@ -35,6 +35,25 @@ public final class FishingLootTable {
             Material.NAUTILUS_SHELL
     );
 
+    // Standard treasure (1000 XP)
+    public static final List<Material> STANDARD_TREASURE_LOOT = List.of(
+            Material.ENCHANTED_BOOK,
+            Material.BOW,
+            Material.FISHING_ROD,
+            Material.LILY_PAD
+    );
+
+    // Rare loot (2000 XP)
+    public static final List<Material> RARE_TREASURE_LOOT = List.of(
+            Material.NAME_TAG,
+            Material.SADDLE
+    );
+
+    // Epic loot (5000 XP)
+    public static final List<Material> EPIC_TREASURE_LOOT = List.of(
+            Material.NAUTILUS_SHELL
+    );
+
     private static final EnumSet<Material> FISH_MATERIALS = EnumSet.copyOf(FISH_LOOT);
 
     public static boolean isFishMaterial(Material material) {

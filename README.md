@@ -19,7 +19,8 @@ A [Paper](https://papermc.io) Minecraft plugin for **auto-fishing** — automati
 - **AuraSkills hooks** *(optional)* — When AuraSkills is installed:
   - **Better simulated rolls** — More treasure / less junk (+0.25% Fishing level scaling).
   - **Faster re-casting** — 1 tick shaved per ten Fishing levels.
-  - **Vanilla XP +2% per Fishing level** on each catch plus **bonus AuraSkills XP** (+1% per level multiplier on the Aura XP payload).
+  - **Vanilla XP +2% per Fishing level** on each catch plus **bonus AuraSkills XP** (+2% per level multiplier on the Aura XP payload).
+  - **Rarity-based treasure** — Standard (85%), Rare (14%), Epic (1%) with scaling bonuses per fishing level.
 
 ### Routed loot dump (Paper 1.1.0)
 
@@ -40,7 +41,7 @@ Luck of the Sea on the autofish rod still affects simulated treasure/junk probab
 
 ## Installation
 
-1. Grab `HereFishy-1.1.0.jar` from Releases (or `./gradlew build` locally — see below).
+1. Grab `HereFishy-1.1.1.jar` from Releases (or `./gradlew build` locally — see below).
 2. Drop the JAR in `plugins/`.
 3. Restart the server (recommended over hot-reloads on production worlds).
 
@@ -57,7 +58,7 @@ Luck of the Sea on the autofish rod still affects simulated treasure/junk probab
 The compiled plugin jar is written to:
 
 ```
-build/libs/HereFishy-1.1.0.jar
+build/libs/HereFishy-1.1.1.jar
 ```
 
 ## Commands & permissions
@@ -86,7 +87,7 @@ Autofishing halts instantly if rods break/nearly snap, inventories overflow with
 
 ## Version
 
-Current release documented here: **`1.1.0`** (Gradle + `plugin.yml` stay in sync).
+Current release documented here: **`1.1.1`** (Gradle + `plugin.yml` stay in sync).
 
 ## License
 
