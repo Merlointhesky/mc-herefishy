@@ -29,13 +29,47 @@ public final class FishySession {
     /** Catches `addItem` overflow when autofishing with a stuffed inventory — drained by offload logic. */
     private final Deque<ItemStack> overflowStacks = new ArrayDeque<>();
 
+    private final Map<Material, Integer> caughtFish = new EnumMap<>(Material.class);
+    private final Map<Material, Integer> caughtJunk = new EnumMap<>(Material.class);
+    private final Map<Material, Integer> caughtTreasure = new EnumMap<>(Material.class);
+    private int dumpCount = 0;
+
     public boolean isAutoFishing() {
         return autoFishing;
     }
 
     public void setAutoFishing(boolean autoFishing) {
         this.autoFishing = autoFishing;
+        if (!autoFishing) {
+            // Clearing stats is usually handled by the caller after sending summary,
+            // but we ensure it's clean if just toggled off.
+        }
     }
+
+    public void recordCatch(Material material, DepositBucket bucket, int amount) {
+        Map<Material, Integer> targetMap = switch (bucket) {
+            case FISH -> caughtFish;
+            case JUNK -> caughtJunk;
+            case TREASURE -> caughtTreasure;
+        };
+        targetMap.put(material, targetMap.getOrDefault(material, 0) + amount);
+    }
+
+    public void incrementDumpCount() {
+        this.dumpCount++;
+    }
+
+    public void clearStats() {
+        caughtFish.clear();
+        caughtJunk.clear();
+        caughtTreasure.clear();
+        dumpCount = 0;
+    }
+
+    public Map<Material, Integer> getCaughtFish() { return caughtFish; }
+    public Map<Material, Integer> getCaughtJunk() { return caughtJunk; }
+    public Map<Material, Integer> getCaughtTreasure() { return caughtTreasure; }
+    public int getDumpCount() { return dumpCount; }
 
     public boolean isSetupMode() {
         return setupMode;

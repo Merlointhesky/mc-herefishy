@@ -31,6 +31,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
 public final class FishingListener implements Listener {
@@ -52,11 +53,17 @@ public final class FishingListener implements Listener {
     }
 
     public void startAutoFishing(Player player) {
-        sessionManager.session(player).setAutoFishing(true);
+        FishySession session = sessionManager.session(player);
+        session.clearStats();
+        session.setAutoFishing(true);
     }
 
     public void stopAutoFishing(Player player) {
-        sessionManager.session(player).setAutoFishing(false);
+        FishySession session = sessionManager.session(player);
+        if (session.isAutoFishing()) {
+            session.setAutoFishing(false);
+            sendActivitySummary(player, session);
+        }
     }
 
     public void stopAutoFishing(Player player, @Nullable Component message) {
@@ -134,7 +141,10 @@ public final class FishingListener implements Listener {
 
         Location fishingAnchor = player.getLocation().clone();
         HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(loot);
-        sendCatchMessage(player, loot, session);
+        
+        // Record the catch for the summary instead of spamming chat
+        session.recordCatch(loot.getType(), LootClassifier.depositBucket(loot.getType(), session), loot.getAmount());
+        
         awardAuraSkillsFishingXp(player, loot);
 
         if (leftover.isEmpty()) {
@@ -208,16 +218,45 @@ public final class FishingListener implements Listener {
         return player.getInventory().firstEmpty() == -1 || sessionManager.session(player).hasBufferedOverflow();
     }
 
-    private void sendCatchMessage(Player player, ItemStack loot, FishySession session) {
-        String itemName = formatItemName(loot.getType().name());
-        NamedTextColor color = LootClassifier.chatColor(loot.getType(), session);
+    public void sendActivitySummary(Player player, FishySession session) {
+        if (session.getCaughtFish().isEmpty() && session.getCaughtJunk().isEmpty() && session.getCaughtTreasure().isEmpty()) {
+            return;
+        }
 
-        Component message = Component.text("Here fishy! Got ")
-                .color(NamedTextColor.GRAY)
-                .append(Component.text(itemName).color(color))
-                .append(Component.text(".").color(NamedTextColor.GRAY));
+        player.sendMessage(Component.text("-----------------------------------").color(NamedTextColor.GRAY));
+        player.sendMessage(Component.text("#HEREFISHY ACTIVITY SUMMARY:").color(NamedTextColor.GOLD));
 
-        player.sendMessage(message);
+        if (!session.getCaughtFish().isEmpty()) {
+            player.sendMessage(Component.text("Fish Caught:").color(NamedTextColor.YELLOW));
+            for (Map.Entry<Material, Integer> entry : session.getCaughtFish().entrySet()) {
+                player.sendMessage(Component.text("  - " + formatItemName(entry.getKey().name()) + ": " + entry.getValue())
+                        .color(NamedTextColor.WHITE));
+            }
+        }
+
+        if (!session.getCaughtTreasure().isEmpty()) {
+            player.sendMessage(Component.text("Treasure Found:").color(NamedTextColor.GREEN));
+            for (Map.Entry<Material, Integer> entry : session.getCaughtTreasure().entrySet()) {
+                player.sendMessage(Component.text("  - " + formatItemName(entry.getKey().name()) + ": " + entry.getValue())
+                        .color(NamedTextColor.WHITE));
+            }
+        }
+
+        if (!session.getCaughtJunk().isEmpty()) {
+            player.sendMessage(Component.text("Junk Pulled:").color(NamedTextColor.RED));
+            for (Map.Entry<Material, Integer> entry : session.getCaughtJunk().entrySet()) {
+                player.sendMessage(Component.text("  - " + formatItemName(entry.getKey().name()) + ": " + entry.getValue())
+                        .color(NamedTextColor.WHITE));
+            }
+        }
+
+        if (session.getDumpCount() > 0) {
+            player.sendMessage(Component.text("# Number of Dumps: " + session.getDumpCount()).color(NamedTextColor.AQUA));
+        }
+
+        player.sendMessage(Component.text("-----------------------------------").color(NamedTextColor.GRAY));
+
+        session.clearStats();
     }
 
     private String formatItemName(String materialName) {

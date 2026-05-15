@@ -13,6 +13,9 @@ A [Paper](https://papermc.io) Minecraft plugin for **auto-fishing** — automati
 - **Inventory-full handling**
   - *Default:* stops with a chat message when you have **no empty slots** (`firstEmpty`).
   - *Optional routed setup:* when you bind crates + junk spot (below), teleport **fish stash → trophy chest → junk stand → fishing spot**, then resumes if offload succeeds.
+- **Activity Summary (New in 1.2.1)** — Instead of individual chat messages for every catch, a summary is displayed when auto-fishing stops or after each successful offload.
+  - Breakdowns by category: Fish, Treasure, and Junk.
+  - Displays the number of times inventory was dumped.
 - **Surplus buffering** — If a catch cannot be placed in your inventory (`addItem` overflow) while routed, that stack is routed on the teleport trip instead of spamming drops onshore.
 - **Rod break detection** — Stops if the autofish rod shatters mid-session.
 - **Session persistence** — Loot routing overrides and chest bindings are saved and reloaded automatically when you reconnect.
@@ -22,7 +25,7 @@ A [Paper](https://papermc.io) Minecraft plugin for **auto-fishing** — automati
   - **Vanilla XP +2% per Fishing level** on each catch plus **bonus AuraSkills XP** (+2% per level multiplier on the Aura XP payload).
   - **Rarity-based treasure** — Standard, Rare, Epic with scaling bonuses per fishing level.
 
-### Routed loot dump (Paper 1.2.0)
+### Routed loot dump (Paper 1.2.1)
 
 1. **`/herefishy setup`**:
    - Starts the setup wizard.
@@ -41,7 +44,7 @@ Luck of the Sea on the autofish rod still affects simulated treasure/junk probab
 
 ## Installation
 
-1. Grab `HereFishy-1.2.0.jar` from Releases (or `./gradlew build` locally — see below).
+1. Grab `HereFishy-1.2.1.jar` from Releases (or `./gradlew build` locally — see below).
 2. Drop the JAR in `plugins/`.
 3. Restart the server (recommended over hot-reloads on production worlds).
 
@@ -58,7 +61,7 @@ Luck of the Sea on the autofish rod still affects simulated treasure/junk probab
 The compiled plugin jar is written to:
 
 ```
-build/libs/HereFishy-1.2.0.jar
+build/libs/HereFishy-1.2.1.jar
 ```
 
 ## Commands & permissions
@@ -88,7 +91,7 @@ Autofishing halts instantly if rods break/nearly snap, inventories overflow with
 
 ## Version
 
-Current release documented here: **`1.2.0`** (Gradle + `plugin.yml` stay in sync).
+Current release documented here: **`1.2.1`** (Gradle + `plugin.yml` stay in sync).
 
 ## License
 

@@ -48,6 +48,7 @@ public final class InventoryOffloadService {
             return false;
         }
         session.setOffloadInProgress(true);
+        session.incrementDumpCount();
         player.sendMessage(Component.text("Inventory full — teleporting to stash loot.")
                 .color(NamedTextColor.AQUA));
         try {
@@ -61,6 +62,7 @@ public final class InventoryOffloadService {
             }
             player.sendMessage(Component.text("Loot routed — snapping back to the water.")
                     .color(NamedTextColor.GREEN));
+            listener.sendActivitySummary(player, session);
             if (rescheduleAfterSuccess) {
                 listener.scheduleReCast(player);
             }
