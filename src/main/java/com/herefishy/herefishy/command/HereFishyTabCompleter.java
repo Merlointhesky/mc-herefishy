@@ -10,7 +10,7 @@ import java.util.List;
 
 public final class HereFishyTabCompleter implements TabCompleter {
 
-    private static final List<String> SUBS = List.of("start", "stop", "config");
+    private static final List<String> SUBS = List.of("start", "stop", "config", "setup");
 
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,

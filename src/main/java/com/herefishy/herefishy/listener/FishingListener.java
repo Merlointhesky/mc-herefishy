@@ -322,13 +322,13 @@ public final class FishingListener implements Listener {
         Material treasure;
 
         // Base rarity chances: Standard (85%), Rare (14%), Epic (1%)
-        // Increased by 0.5% per fishing level for rare and epic
-        double rareChanceBonus = auraFishingLevel * 0.005;
-        double epicChanceBonus = auraFishingLevel * 0.005;
+        // Increased by 0.5% per fishing level for rare and epic, but capped
+        double rareChanceBonus = Math.min(0.20, auraFishingLevel * 0.005);
+        double epicChanceBonus = Math.min(0.10, auraFishingLevel * 0.005);
         
-        double standardChance = 0.85 - rareChanceBonus - epicChanceBonus;
         double rareChance = 0.14 + rareChanceBonus;
         double epicChance = 0.01 + epicChanceBonus;
+        double standardChance = 1.0 - rareChance - epicChance;
 
         if (rarityRoll < standardChance) {
             // Standard treasure (1000 XP)

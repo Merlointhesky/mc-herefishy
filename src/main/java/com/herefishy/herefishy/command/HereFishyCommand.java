@@ -57,6 +57,14 @@ public final class HereFishyCommand implements CommandExecutor {
                 }
             }
             case "config" -> RoutingConfigMenu.open(player, sessionManager);
+            case "setup" -> {
+                var session = sessionManager.session(player);
+                session.setSetupMode(true);
+                session.resetDumpBindings();
+                player.sendMessage(Component.text("--- HereFishy Setup Wizard ---").color(NamedTextColor.GREEN));
+                player.sendMessage(Component.text("1. Sneak-click an inventory (chest/barrel) to store TREASURE.").color(NamedTextColor.YELLOW));
+                player.sendMessage(Component.text("Make sure you are holding a fishing rod!").color(NamedTextColor.GRAY));
+            }
             default -> usage(player);
         }
 
@@ -64,7 +72,7 @@ public final class HereFishyCommand implements CommandExecutor {
     }
 
     private static void usage(Player player) {
-        player.sendMessage(Component.text("Usage: /herefishy <start|stop|config>")
+        player.sendMessage(Component.text("Usage: /herefishy <start|stop|config|setup>")
                 .color(NamedTextColor.YELLOW));
     }
 }

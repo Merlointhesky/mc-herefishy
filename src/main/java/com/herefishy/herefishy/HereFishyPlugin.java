@@ -2,6 +2,7 @@ package com.herefishy.herefishy;
 
 import com.herefishy.herefishy.command.HereFishyCommand;
 import com.herefishy.herefishy.command.HereFishyTabCompleter;
+import com.herefishy.herefishy.config.PlayerConfigManager;
 import com.herefishy.herefishy.listener.DumpWizardListener;
 import com.herefishy.herefishy.listener.FishingListener;
 import com.herefishy.herefishy.listener.PluginSessionBootstrapListener;
@@ -14,6 +15,7 @@ public final class HereFishyPlugin extends JavaPlugin {
 
     private static HereFishyPlugin instance;
     private final FishySessionManager sessionManager = new FishySessionManager();
+    private final PlayerConfigManager configManager = new PlayerConfigManager(this);
     private final InventoryOffloadService offloadService = new InventoryOffloadService(this, sessionManager);
     private final FishingListener fishingListener = new FishingListener(sessionManager, offloadService);
 
@@ -33,9 +35,9 @@ public final class HereFishyPlugin extends JavaPlugin {
     private void registerListeners() {
         var plugins = getServer().getPluginManager();
         plugins.registerEvents(fishingListener, this);
-        plugins.registerEvents(new DumpWizardListener(sessionManager), this);
-        plugins.registerEvents(new RoutingMenuListener(sessionManager), this);
-        plugins.registerEvents(new PluginSessionBootstrapListener(sessionManager), this);
+        plugins.registerEvents(new DumpWizardListener(sessionManager, configManager), this);
+        plugins.registerEvents(new RoutingMenuListener(sessionManager, configManager), this);
+        plugins.registerEvents(new PluginSessionBootstrapListener(sessionManager, configManager), this);
     }
 
     @Override
@@ -49,5 +51,9 @@ public final class HereFishyPlugin extends JavaPlugin {
 
     public FishySessionManager getSessionManager() {
         return sessionManager;
+    }
+
+    public PlayerConfigManager getConfigManager() {
+        return configManager;
     }
 }

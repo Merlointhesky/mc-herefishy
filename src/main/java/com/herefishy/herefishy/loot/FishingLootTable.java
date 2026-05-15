@@ -12,10 +12,10 @@ import java.util.Set;
 public final class FishingLootTable {
 
     public static final List<Material> FISH_LOOT = List.of(
-            Material.COD, Material.COD, Material.COD, Material.COD,
-            Material.SALMON, Material.SALMON,
-            Material.TROPICAL_FISH,
-            Material.PUFFERFISH
+            Material.COD, Material.COD, Material.COD, Material.COD, Material.COD, Material.COD, Material.COD, Material.COD, Material.COD, Material.COD, // 10
+            Material.SALMON, Material.SALMON, Material.SALMON, Material.SALMON, Material.SALMON, // 5
+            Material.PUFFERFISH, Material.PUFFERFISH, // 2
+            Material.TROPICAL_FISH // 1
     );
 
     public static final List<Material> JUNK_LOOT = List.of(

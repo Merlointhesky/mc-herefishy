@@ -1,5 +1,6 @@
 package com.herefishy.herefishy.listener;
 
+import com.herefishy.herefishy.config.PlayerConfigManager;
 import com.herefishy.herefishy.session.ChestRoute;
 import com.herefishy.herefishy.session.FishySession;
 import com.herefishy.herefishy.session.FishySessionManager;
@@ -16,14 +17,17 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.InventoryHolder;
 
 /**
- * Sneak + fishing rod binds treasure chest → fish chest → junk teleport spot (session-only storage).
+ * Sneak + fishing rod binds treasure chest → fish chest → junk teleport spot (persistent storage).
+ * Only active when setupMode is enabled.
  */
 public final class DumpWizardListener implements Listener {
 
     private final FishySessionManager sessionManager;
+    private final PlayerConfigManager configManager;
 
-    public DumpWizardListener(FishySessionManager sessionManager) {
+    public DumpWizardListener(FishySessionManager sessionManager, PlayerConfigManager configManager) {
         this.sessionManager = sessionManager;
+        this.configManager = configManager;
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -38,6 +42,10 @@ public final class DumpWizardListener implements Listener {
             return;
         }
         Player player = event.getPlayer();
+        FishySession session = sessionManager.session(player);
+        if (!session.isSetupMode()) {
+            return;
+        }
         if (!player.isSneaking()) {
             return;
         }
@@ -45,7 +53,6 @@ public final class DumpWizardListener implements Listener {
             return;
         }
 
-        FishySession session = sessionManager.session(player);
         Block block = event.getClickedBlock();
 
         if (session.routesComplete()) {
@@ -86,10 +93,10 @@ public final class DumpWizardListener implements Listener {
     }
 
     private void bindFishChest(Player player,
-                               FishySession session,
-                               Block block,
-                               ChestRoute treasure,
-                               PlayerInteractEvent event) {
+                                FishySession session,
+                                Block block,
+                                ChestRoute treasure,
+                                PlayerInteractEvent event) {
         if (!(block.getState() instanceof InventoryHolder)) {
             player.sendMessage(Component.text("Fish crates need an inventory block — try again.")
                     .color(NamedTextColor.RED));
@@ -111,7 +118,9 @@ public final class DumpWizardListener implements Listener {
 
     private void bindJunkSpot(Player player, FishySession session, Block block, PlayerInteractEvent event) {
         session.setJunkStand(player.getLocation().clone());
-        player.sendMessage(Component.text("Everything's wired — junk will tumble from where you stood.")
+        session.setSetupMode(false);
+        configManager.saveSession(player.getUniqueId(), session);
+        player.sendMessage(Component.text("Everything's wired — junk will tumble from where you stood. Setup complete.")
                 .color(NamedTextColor.GREEN));
     }
 

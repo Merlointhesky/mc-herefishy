@@ -15,20 +15,20 @@ A [Paper](https://papermc.io) Minecraft plugin for **auto-fishing** — automati
   - *Optional routed setup:* when you bind crates + junk spot (below), teleport **fish stash → trophy chest → junk stand → fishing spot**, then resumes if offload succeeds.
 - **Surplus buffering** — If a catch cannot be placed in your inventory (`addItem` overflow) while routed, that stack is routed on the teleport trip instead of spamming drops onshore.
 - **Rod break detection** — Stops if the autofish rod shatters mid-session.
-- **Session-only memory** — Dump bindings and `/herefishy config` choices live **only in RAM** until you disconnect (no YAML persistence).
+- **Session persistence** — Loot routing overrides and chest bindings are saved and reloaded automatically when you reconnect.
 - **AuraSkills hooks** *(optional)* — When AuraSkills is installed:
-  - **Better simulated rolls** — More treasure / less junk (+0.25% Fishing level scaling).
+  - **Better simulated rolls** — More treasure / less junk (+0.25% Fishing level scaling). Capped to ensure standard treasure (books, etc.) remains available at high levels.
   - **Faster re-casting** — 1 tick shaved per ten Fishing levels.
   - **Vanilla XP +2% per Fishing level** on each catch plus **bonus AuraSkills XP** (+2% per level multiplier on the Aura XP payload).
-  - **Rarity-based treasure** — Standard (85%), Rare (14%), Epic (1%) with scaling bonuses per fishing level.
+  - **Rarity-based treasure** — Standard, Rare, Epic with scaling bonuses per fishing level.
 
-### Routed loot dump (Paper 1.1.0)
+### Routed loot dump (Paper 1.2.0)
 
-1. **Sneak + hold a rod + right-click containers**:
-   - First valid inventory block → **treasure** chest/barrel/etc.
-   - Second valid inventory block → **fish** stash (must differ from trophy chest).
-   - Third sneak-click (**any block**) → anchors your **junk** drop location (drops spawn at your feet; stand above lava/overworld void chutes responsibly).
-   - Sneak-binding while **already fully routed** clears the trio and reboots setup.
+1. **`/herefishy setup`**:
+   - Starts the setup wizard.
+   - First sneak-click on an inventory block → **treasure** chest/barrel/etc.
+   - Second sneak-click on an inventory block → **fish** stash.
+   - Third sneak-click (**any block**) → anchors your **junk** drop location.
 2. **`/herefishy config`** — GUI for every junk/treasure material in the simulated tables. Toggle whether each stacks into the **treasure chest** vs **junk drops** *(fish ALWAYS use the fish chest)*. Routing updates chat colors & AuraSkills XP weights to reflect the overrides.
 
 Luck of the Sea on the autofish rod still affects simulated treasure/junk probabilities.
@@ -41,7 +41,7 @@ Luck of the Sea on the autofish rod still affects simulated treasure/junk probab
 
 ## Installation
 
-1. Grab `HereFishy-1.1.1.jar` from Releases (or `./gradlew build` locally — see below).
+1. Grab `HereFishy-1.2.0.jar` from Releases (or `./gradlew build` locally — see below).
 2. Drop the JAR in `plugins/`.
 3. Restart the server (recommended over hot-reloads on production worlds).
 
@@ -58,7 +58,7 @@ Luck of the Sea on the autofish rod still affects simulated treasure/junk probab
 The compiled plugin jar is written to:
 
 ```
-build/libs/HereFishy-1.1.1.jar
+build/libs/HereFishy-1.2.0.jar
 ```
 
 ## Commands & permissions
@@ -68,6 +68,7 @@ build/libs/HereFishy-1.1.1.jar
 | `/herefishy start` | Enable autofish mode | `herefishy.use` |
 | `/herefishy stop` | Disable autofish mode | `herefishy.use` |
 | `/herefishy config` | Open the treasure/junk routing GUI | `herefishy.use` |
+| `/herefishy setup` | Start the dump routing setup wizard | `herefishy.use` |
 
 | Permission | Description | Default |
 |------------|-------------|---------|
@@ -79,7 +80,7 @@ build/libs/HereFishy-1.1.1.jar
 2. Run `/herefishy start`.
 3. Cast once manually — the hook automates reels + recasts.
 4. *(Optional)* Configure `/herefishy config` BEFORE or DURING farming to match personal junk vs treasure taxonomy.
-5. *(Optional)* While sneaking with rod in-hand, sneak-click binds:
+5. *(Optional)* Run `/herefishy setup` and follow chat instructions to bind:
    - treasure chest → fish chest → lava/junk footing.
    - Without this trio the plugin behaves like `<1.1.0`: hard stop once inventory lacks space.
 
@@ -87,7 +88,7 @@ Autofishing halts instantly if rods break/nearly snap, inventories overflow with
 
 ## Version
 
-Current release documented here: **`1.1.1`** (Gradle + `plugin.yml` stay in sync).
+Current release documented here: **`1.2.0`** (Gradle + `plugin.yml` stay in sync).
 
 ## License
 

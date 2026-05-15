@@ -17,6 +17,7 @@ import java.util.Map;
 public final class FishySession {
 
     private boolean autoFishing;
+    private boolean setupMode;
     private volatile boolean offloadInProgress;
     private ChestRoute treasureChest;
     private ChestRoute fishChest;
@@ -34,6 +35,14 @@ public final class FishySession {
 
     public void setAutoFishing(boolean autoFishing) {
         this.autoFishing = autoFishing;
+    }
+
+    public boolean isSetupMode() {
+        return setupMode;
+    }
+
+    public void setSetupMode(boolean setupMode) {
+        this.setupMode = setupMode;
     }
 
     public boolean isOffloadInProgress() {

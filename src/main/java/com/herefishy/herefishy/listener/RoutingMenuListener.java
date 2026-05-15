@@ -1,5 +1,6 @@
 package com.herefishy.herefishy.listener;
 
+import com.herefishy.herefishy.config.PlayerConfigManager;
 import com.herefishy.herefishy.gui.RoutingConfigMenu;
 import com.herefishy.herefishy.loot.FishingLootTable;
 import com.herefishy.herefishy.session.FishySession;
@@ -16,9 +17,11 @@ import java.util.List;
 public final class RoutingMenuListener implements Listener {
 
     private final FishySessionManager sessionManager;
+    private final PlayerConfigManager configManager;
 
-    public RoutingMenuListener(FishySessionManager sessionManager) {
+    public RoutingMenuListener(FishySessionManager sessionManager, PlayerConfigManager configManager) {
         this.sessionManager = sessionManager;
+        this.configManager = configManager;
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -45,6 +48,7 @@ public final class RoutingMenuListener implements Listener {
         Material material = materials.get(slot);
         FishySession session = sessionManager.session(player);
         session.cycleTreasureJunk(material);
+        configManager.saveSession(player.getUniqueId(), session);
         event.getView().getTopInventory().setItem(slot, RoutingConfigMenu.iconFor(session, material));
     }
 
