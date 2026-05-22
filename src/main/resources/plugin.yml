@@ -1,5 +1,5 @@
 name: HereFishy
-version: '1.1.1'
+version: '1.2.2'
 main: com.herefishy.herefishy.HereFishyPlugin
 description: Auto-fishing plugin for Paper servers
 api-version: '1.21'
@@ -11,6 +11,7 @@ commands:
     description: Configure and toggle auto-fishing
     usage: /herefishy <start|stop|config>
     permission: herefishy.use
+    aliases: [hf]
 
 permissions:
   herefishy.use:

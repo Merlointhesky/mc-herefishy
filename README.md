@@ -44,7 +44,7 @@ Luck of the Sea on the autofish rod still affects simulated treasure/junk probab
 
 ## Installation
 
-1. Grab `HereFishy-1.2.1.jar` from Releases (or `./gradlew build` locally — see below).
+1. Grab `HereFishy-1.2.2.jar` from Releases (or `./gradlew build` locally — see below).
 2. Drop the JAR in `plugins/`.
 3. Restart the server (recommended over hot-reloads on production worlds).
 
@@ -61,17 +61,24 @@ Luck of the Sea on the autofish rod still affects simulated treasure/junk probab
 The compiled plugin jar is written to:
 
 ```
-build/libs/HereFishy-1.2.1.jar
+build/libs/HereFishy-1.2.2.jar
 ```
+
+## Recent Changes (v1.2.2)
+
+- **Added command alias `/hf`** — Players can now use `/hf` as a short alias for `/herefishy`.
+- **Version bump & clean build** — Bumped version to `1.2.2` to maintain consistency across all plugins.
 
 ## Commands & permissions
 
+All commands can be run with `/hf` instead of `/herefishy`.
+
 | Command | Description | Permission |
 |---------|-------------|------------|
-| `/herefishy start` | Enable autofish mode | `herefishy.use` |
-| `/herefishy stop` | Disable autofish mode | `herefishy.use` |
-| `/herefishy config` | Open the treasure/junk routing GUI | `herefishy.use` |
-| `/herefishy setup` | Start the dump routing setup wizard | `herefishy.use` |
+| `/herefishy start` (or `/hf start`) | Enable autofish mode | `herefishy.use` |
+| `/herefishy stop` (or `/hf stop`) | Disable autofish mode | `herefishy.use` |
+| `/herefishy config` (or `/hf config`) | Open the treasure/junk routing GUI | `herefishy.use` |
+| `/herefishy setup` (or `/hf setup`) | Start the dump routing setup wizard | `herefishy.use` |
 
 | Permission | Description | Default |
 |------------|-------------|---------|
@@ -91,7 +98,7 @@ Autofishing halts instantly if rods break/nearly snap, inventories overflow with
 
 ## Version
 
-Current release documented here: **`1.2.1`** (Gradle + `plugin.yml` stay in sync).
+Current release documented here: **`1.2.2`** (Gradle + `plugin.yml` stay in sync).
 
 ## License
 
