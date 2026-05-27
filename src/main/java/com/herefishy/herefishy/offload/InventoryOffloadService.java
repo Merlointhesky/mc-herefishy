@@ -11,6 +11,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -163,6 +164,9 @@ public final class InventoryOffloadService {
             if (stack == null || stack.getType().isAir()) {
                 continue;
             }
+            if (isProtectedItem(stack.getType())) {
+                continue; // Do not dump protected tools/food/totems
+            }
             if (LootClassifier.depositBucket(stack.getType(), session) != bucket) {
                 continue;
             }
@@ -199,6 +203,9 @@ public final class InventoryOffloadService {
             if (stack == null || stack.getType().isAir()) {
                 continue;
             }
+            if (isProtectedItem(stack.getType())) {
+                continue; // Do not dump protected tools/food/totems
+            }
             if (LootClassifier.depositBucket(stack.getType(), session) != DepositBucket.JUNK) {
                 continue;
             }
@@ -223,6 +230,9 @@ public final class InventoryOffloadService {
             ItemStack stack = inventory.getItem(slot);
             if (stack == null || stack.getType().isAir()) {
                 continue;
+            }
+            if (isProtectedItem(stack.getType())) {
+                continue; // Do not count protected gear
             }
             if (LootClassifier.depositBucket(stack.getType(), session) == bucket) {
                 return true;
@@ -249,5 +259,44 @@ public final class InventoryOffloadService {
             slots.add(OFF_HAND_SLOT);
         }
         return slots;
+    }
+
+    private boolean isProtectedItem(Material mat) {
+        if (mat.isEdible()) return true;
+        
+        String name = mat.name();
+        
+        // Protect Weapons, Tools, & Combat/Survival Gear
+        if (name.contains("SWORD") || name.contains("AXE") || name.contains("PICKAXE") 
+                || name.contains("SHOVEL") || name.contains("HOE") || name.contains("HELMET") 
+                || name.contains("CHESTPLATE") || name.contains("LEGGINGS") || name.contains("BOOTS") 
+                || name.contains("SHIELD") || name.contains("BOW") || name.contains("CROSSBOW") 
+                || name.contains("TRIDENT") || name.contains("MACE") || mat == Material.SHEARS 
+                || mat == Material.FISHING_ROD || mat == Material.FLINT_AND_STEEL || mat == Material.BRUSH 
+                || mat == Material.SPYGLASS || mat == Material.LEAD) {
+            return true;
+        }
+        
+        // Protect high-value survival & portable storage utility items
+        if (mat == Material.TOTEM_OF_UNDYING || mat == Material.ENDER_CHEST 
+                || name.contains("SHULKER_BOX")) {
+            return true;
+        }
+        
+        // Protect survival buckets & specialty fluids
+        if (mat == Material.MILK_BUCKET || mat == Material.WATER_BUCKET 
+                || mat == Material.LAVA_BUCKET || mat == Material.BUCKET 
+                || mat == Material.HONEY_BOTTLE || mat == Material.POTION 
+                || mat == Material.SPLASH_POTION || mat == Material.LINGERING_POTION) {
+            return true;
+        }
+        
+        // Protect basic lighting utilities
+        if (name.contains("TORCH") || name.contains("LANTERN") || name.contains("CAMPFIRE") 
+                || mat == Material.GLOWSTONE || mat == Material.SEA_LANTERN) {
+            return true;
+        }
+        
+        return false;
     }
 }
