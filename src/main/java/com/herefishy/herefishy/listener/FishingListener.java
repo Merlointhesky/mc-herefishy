@@ -6,9 +6,6 @@ import com.herefishy.herefishy.loot.LootClassifier;
 import com.herefishy.herefishy.offload.InventoryOffloadService;
 import com.herefishy.herefishy.session.FishySession;
 import com.herefishy.herefishy.session.FishySessionManager;
-import dev.aurelium.auraskills.api.AuraSkillsApi;
-import dev.aurelium.auraskills.api.skill.Skills;
-import dev.aurelium.auraskills.api.user.SkillsUser;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -276,16 +273,9 @@ public final class FishingListener implements Listener {
             return;
         }
         try {
-            AuraSkillsApi auraSkills = AuraSkillsApi.get();
-            SkillsUser user = auraSkills.getUser(player.getUniqueId());
-            if (user != null) {
-                FishySession session = sessionManager.session(player);
-                double baseXp = LootClassifier.auraXpBase(loot.getType(), session);
-                int auraFishingLevel = getAuraSkillsFishingLevel(player);
-                double xpAmount = baseXp * (1.0 + auraFishingLevel * 0.02);
-                user.addSkillXp(Skills.FISHING, xpAmount);
-            }
-        } catch (Exception ignored) {
+            FishySession session = sessionManager.session(player);
+            com.herefishy.herefishy.hooks.AuraSkillsHook.awardFishingXp(player, loot, session);
+        } catch (Throwable ignored) {
             // AuraSkills integration failed, but auto-fishing continues
         }
     }
@@ -295,12 +285,8 @@ public final class FishingListener implements Listener {
             return 0;
         }
         try {
-            AuraSkillsApi auraSkills = AuraSkillsApi.get();
-            SkillsUser user = auraSkills.getUser(player.getUniqueId());
-            if (user != null) {
-                return user.getSkillLevel(Skills.FISHING);
-            }
-        } catch (Exception ignored) {
+            return com.herefishy.herefishy.hooks.AuraSkillsHook.getFishingLevel(player);
+        } catch (Throwable ignored) {
             // AuraSkills integration failed
         }
         return 0;
