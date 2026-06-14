@@ -1,5 +1,5 @@
 name: HereFishy
-version: '1.2.2'
+version: '${version}'
 main: com.herefishy.herefishy.HereFishyPlugin
 description: Auto-fishing plugin for Paper servers
 api-version: '1.21'
