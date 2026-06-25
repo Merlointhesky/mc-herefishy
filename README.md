@@ -45,7 +45,7 @@ Luck of the Sea on the autofish rod still affects simulated treasure/junk probab
 
 ## Installation
 
-1. Grab `HereFishy-1.2.4.jar` from Releases (or `./gradlew build` locally — see below).
+1. Grab `HereFishy-1.3.0.jar` from Releases (or `./gradlew build` locally — see below).
 2. Drop the JAR in `plugins/`.
 3. Restart the server (recommended over hot-reloads on production worlds).
 
@@ -62,13 +62,14 @@ Luck of the Sea on the autofish rod still affects simulated treasure/junk probab
 The compiled plugin jar is written to:
 
 ```
-build/libs/HereFishy-1.2.4.jar
+build/libs/HereFishy-1.3.0.jar
 ```
 
-## Recent Changes (v1.2.4)
+## Recent Changes (v1.3.0)
 
-- **Added command alias `/hf`** — Players can now use `/hf` as a short alias for `/herefishy`.
-- **Version bump & clean build** — Bumped version to `1.2.4` to maintain consistency across all plugins.
+- **Added AFK Self-Defense Mechanism** — The bot now automatically fends off nearby threats (Monster, Slime, Phantom, Spider) within a 4.0-block radius. It equips the best weapon from the hotbar, attacks the target, and teleports the player back to their exact original position and orientation, resuming fishing immediately once the area is safe.
+- **AFK Idle Defense** — When auto-fishing is stopped, standard AFK Auto-defense activates, fending off nearby threats until manual movement is detected.
+- **Version bump & clean build** — Bumped version to `1.3.0` to maintain consistency across all plugins.
 
 ## Commands & permissions
 
@@ -99,7 +100,7 @@ Autofishing halts instantly if rods break/nearly snap, inventories overflow with
 
 ## Version
 
-Current release documented here: **`1.2.4`** (Gradle + `plugin.yml` stay in sync).
+Current release documented here: **`1.3.0`** (Gradle + `plugin.yml` stay in sync).
 
 ## License
 

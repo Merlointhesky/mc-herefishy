@@ -6,6 +6,7 @@ import com.herefishy.herefishy.loot.LootClassifier;
 import com.herefishy.herefishy.offload.InventoryOffloadService;
 import com.herefishy.herefishy.session.FishySession;
 import com.herefishy.herefishy.session.FishySessionManager;
+import com.herefishy.herefishy.task.AutoDefenseTask;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -14,10 +15,16 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.FishHook;
+import org.bukkit.entity.Monster;
+import org.bukkit.entity.Phantom;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Slime;
+import org.bukkit.entity.Spider;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerFishEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.EnchantmentStorageMeta;
@@ -30,6 +37,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.UUID;
 
 public final class FishingListener implements Listener {
 
@@ -37,6 +45,7 @@ public final class FishingListener implements Listener {
 
     private final FishySessionManager sessionManager;
     private final InventoryOffloadService offloadService;
+    private final Map<UUID, AutoDefenseTask> activeDefenseTasks = new HashMap<>();
 
     private static final Random RANDOM = new Random();
 
@@ -53,6 +62,8 @@ public final class FishingListener implements Listener {
         FishySession session = sessionManager.session(player);
         session.clearStats();
         session.setAutoFishing(true);
+        stopAutoDefense(player, true);
+        startAutoDefense(player);
     }
 
     public void stopAutoFishing(Player player) {
@@ -60,6 +71,10 @@ public final class FishingListener implements Listener {
         if (session.isAutoFishing()) {
             session.setAutoFishing(false);
             sendActivitySummary(player, session);
+            stopAutoDefense(player, true);
+            if (player.isOnline() && HereFishyPlugin.getInstance().isEnabled()) {
+                startAutoDefense(player);
+            }
         }
     }
 
@@ -180,6 +195,9 @@ public final class FishingListener implements Listener {
                     return;
                 }
                 if (!isHoldingFishingRod(player)) {
+                    if (hasActiveDefenseTarget(player)) {
+                        return; // Exit recast: defense task will trigger recast when threats are clear
+                    }
                     stopAutoFishing(player);
                     return;
                 }
@@ -487,5 +505,103 @@ public final class FishingListener implements Listener {
             return remaining <= LOW_DURABILITY_THRESHOLD;
         }
         return false;
+    }
+
+    // ==========================================
+    // AFK SELF-DEFENSE CONTROL METHODS
+    // ==========================================
+
+    public void startAutoDefense(Player player) {
+        if (activeDefenseTasks.containsKey(player.getUniqueId())) return;
+        AutoDefenseTask defenseTask = new AutoDefenseTask(HereFishyPlugin.getInstance(), player);
+        activeDefenseTasks.put(player.getUniqueId(), defenseTask);
+        defenseTask.runTaskTimer(HereFishyPlugin.getInstance(), 0L, 1L);
+        if (!isAutoFishing(player)) {
+            player.sendMessage(Component.text("⚔ AFK Auto-defense activated! Stand still; we will protect you. Move manually to deactivate.").color(NamedTextColor.GOLD));
+        }
+    }
+
+    public void stopAutoDefense(Player player, boolean silent) {
+        AutoDefenseTask defenseTask = activeDefenseTasks.remove(player.getUniqueId());
+        if (defenseTask != null) {
+            defenseTask.cancel();
+            if (!silent && !isAutoFishing(player)) {
+                player.sendMessage(Component.text("⚔ AFK Auto-defense deactivated.").color(NamedTextColor.YELLOW));
+            }
+        }
+    }
+
+    public boolean hasAutoDefense(Player player) {
+        return activeDefenseTasks.containsKey(player.getUniqueId());
+    }
+
+    public AutoDefenseTask getAutoDefenseTask(Player player) {
+        return activeDefenseTasks.get(player.getUniqueId());
+    }
+
+    public void cancelAllDefenseTasks() {
+        for (AutoDefenseTask task : activeDefenseTasks.values()) {
+            task.cancel();
+        }
+        activeDefenseTasks.clear();
+    }
+
+    private boolean hasActiveDefenseTarget(Player player) {
+        Location loc = player.getLocation();
+        if (loc.getWorld() == null) return false;
+        double attackRadius = 4.0;
+        for (org.bukkit.entity.Entity entity : loc.getWorld().getNearbyEntities(loc, attackRadius, attackRadius, attackRadius)) {
+            if (entity instanceof Monster ||
+                entity instanceof Slime ||
+                entity instanceof Phantom ||
+                entity instanceof Spider) {
+                if (entity instanceof org.bukkit.entity.LivingEntity living) {
+                    if (!living.isDead() && player.hasLineOfSight(living)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        Player player = event.getPlayer();
+        stopAutoFishing(player);
+        stopAutoDefense(player, true);
+    }
+
+    @EventHandler
+    public void onPlayerMove(PlayerMoveEvent event) {
+        Player player = event.getPlayer();
+        if (hasAutoDefense(player) && !isAutoFishing(player)) {
+            AutoDefenseTask defenseTask = getAutoDefenseTask(player);
+            if (defenseTask != null) {
+                Location expected = defenseTask.getExpectedTeleportLocation();
+
+                // If it's a plugin-driven teleport/rotation, ignore it
+                if (expected != null && expected.getWorld() == event.getTo().getWorld()) {
+                    double distSq = expected.distanceSquared(event.getTo());
+                    // A tiny threshold handles floating-point inaccuracies
+                    if (distSq < 0.05) {
+                        defenseTask.clearExpectedTeleportLocation();
+                        return;
+                    }
+                }
+
+                // Check if they actually moved (e.g. moved X, Y, or Z by > 0.05 blocks)
+                Location from = event.getFrom();
+                Location to = event.getTo();
+                if (from.getWorld() != to.getWorld() || 
+                    Math.abs(from.getX() - to.getX()) > 0.05 || 
+                    Math.abs(from.getY() - to.getY()) > 0.05 || 
+                    Math.abs(from.getZ() - to.getZ()) > 0.05) {
+
+                    // Manual movement detected! Stop auto defense
+                    stopAutoDefense(player, false);
+                }
+            }
+        }
     }
 }

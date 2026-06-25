@@ -42,6 +42,9 @@ public final class HereFishyPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (fishingListener != null) {
+            fishingListener.cancelAllDefenseTasks();
+        }
         getLogger().info("HereFishy disabled!");
     }
 
@@ -55,5 +58,9 @@ public final class HereFishyPlugin extends JavaPlugin {
 
     public PlayerConfigManager getConfigManager() {
         return configManager;
+    }
+
+    public FishingListener getFishingListener() {
+        return fishingListener;
     }
 }
